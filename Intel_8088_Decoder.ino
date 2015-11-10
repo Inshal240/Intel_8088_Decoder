@@ -1,6 +1,10 @@
-#define INSTR_MAX 6
+#define INSTR_BUFF_MAX 12
 
-byte instruction[INSTR_MAX];    // Holds the instruction
+byte instructionBuffer[INSTR_BUFF_MAX];    // Holds the instruction read from port
+byte instructionLength = 0;                // Holds the length in bytes of the instruction read
+bool validInstruction = false;
+
+void printInstructionBuffer(int len = INSTR_BUFF_MAX);
 
 void setup()
 {
@@ -17,9 +21,92 @@ void serialEvent()
 {
   fetchInstruction();
 
-  // TODO: Decode instruction
+  if (validInstruction)
+  {
+    // TODO: Decode instruction
+  }
+  else
+  {
+    printMessage("Invalid instruction.");
+  }
 }
 
+// Summary: Fetches instruction from serial port and converts it into machine code
+// NOTE: Adjusts value of "validInstruction" boolean
+void fetchInstruction()
+{
+  printMessage("Fetching data...");
+
+  clearInstructionBuffer();
+  
+  // Get instruction
+  Serial.readBytesUntil('\n', (char *) instructionBuffer, INSTR_BUFF_MAX);
+
+  instructionLength = getInstructionLength();
+
+  // Check if instruction is valid (2 characters represent each byte)
+  if (instructionLength % 2 == 0)
+  {
+    // Adjust the length and validity
+    validInstruction = true;    
+    instructionLength /= 2;
+  }
+  else return;
+
+  convertToMachineCode(instructionLength);
+
+  printInstructionBuffer(instructionLength);
+}
+
+void decodeInstruction()
+{
+  // TODO: Decode the instruction here
+}
+
+// Summary: Clears the instruction buffer
+void clearInstructionBuffer()
+{
+  // Clear the instruction array
+  for (int idx = 0; idx < INSTR_BUFF_MAX; idx++)
+    instructionBuffer[idx] = 0;
+
+  // Reset buffer length and valid instruction boolean
+  instructionLength = 0;
+  validInstruction = false;
+}
+
+// Summary: Converts the data in instruction buffer to machine code
+// NOTE: Adjusts value of "validInstruction" boolean
+void convertToMachineCode(int len)
+{
+  // Conversion from ASCII to machine code
+  for (int idx = 0; (idx < len) && validInstruction; idx++)
+  {
+    // Convert and set upper nibble
+    instructionBuffer[idx] = (getHexValue(instructionBuffer[idx * 2]) & 0x0F) << 4;
+    // Convert and set lower nibble
+    instructionBuffer[idx] |= getHexValue(instructionBuffer[idx * 2 + 1]) & 0x0F;
+  }
+
+  // Clearing the rest of the array
+  for (int idx = len; idx < INSTR_BUFF_MAX; idx++)
+  {
+    instructionBuffer[idx] = 0;
+  }
+}
+
+// Summary: Returns the amount of non-zero items in
+int getInstructionLength()
+{
+  int len = -1;
+
+  while (instructionBuffer[++len] != 0);
+
+  return len;
+}
+
+// Summary: Converts input ASCII to HEX
+// NOTE: Adjusts value of "validInstruction" boolean
 byte getHexValue(int ch)
 {
   if (ch == 'a' || ch == 'A')
@@ -52,47 +139,33 @@ byte getHexValue(int ch)
   }
   else
   {
-    Serial.println("Error in conversion. Answer may not be correct!");
+    validInstruction = false;
     return (byte) ch;
   }
 }
 
-void fetchInstruction()
+// Print functions
+
+// Summary: Prints input string and waits until it has been transferred
+void printMessage(String message)
 {
-  int ch;   // Holds a temporary byte
-  int idx = 0;
-
-  // Clear the instruction array
-  for (; idx < INSTR_MAX; idx++)
-    instruction[idx] = 0;
-
-  // Reset the counter
-  idx = -1;
-
-  // Get instruction and decode it
-  while (Serial.available() && idx++ < INSTR_MAX)
-  {
-    ch = Serial.read();
-    
-    // Exit on line break
-    if (ch == '\n') return;
-
-    // Get upper digit's hex value and assign it to the upper nibble
-    instruction[idx] = (getHexValue(ch) & 0x0F);
-    instruction[idx] = instruction[idx] << 4;
-
-    // Get lower digit's hex value and assign it to the lower nibble
-    ch = Serial.read();
-    instruction[idx] |= (getHexValue(ch) & 0x0F);
-  }
-
-  // Print it back for debugging
-  for (int idx = 0; idx < INSTR_MAX; idx++)
-    Serial.print(instruction[idx], HEX);
+  Serial.println(message);
+  Serial.flush();
 }
 
-void decodeInstruction()
+// Summary: Prints the instruction buffer
+void printInstructionBuffer(int len)
 {
-  // TODO: Decode the instruction here
+  // Print it back for debugging
+  for (int idx = 0; idx < len; idx++)
+  {
+    // Add a leading zero to single digit hex values
+    if (instructionBuffer[idx] < 0x10) Serial.print("0");
+
+    // Print byte in hex format
+    Serial.print(instructionBuffer[idx], HEX);
+  }
+
+  Serial.println();
 }
 
