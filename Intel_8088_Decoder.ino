@@ -1,8 +1,28 @@
 #define INSTR_BUFF_MAX 12
+#define MOV_HDR_ARR_SZ 4
+
+// Displacement bits
+#define DISP8 0
+#define DISP16 1
 
 byte instructionBuffer[INSTR_BUFF_MAX];    // Holds the instruction read from port
 byte instructionLength = 0;                // Holds the length in bytes of the instruction read
 bool validInstruction = false;
+
+byte moveInstrHeader[] = { 0b1000, 0b1010, 0b1011, 0b1100 };
+
+// All register names. Index using width, then REG or R/M
+const String registerNames[2][8] = {{"AL", "CL", "DL", "BL", "AH", "CH", "DH", "BH"},
+                                    {"AX", "CX", "DX", "BX", "SP", "BP", "SI", "DI"}};
+
+// All address calculations. Index using RM
+const String addressCalc[8] = {"BX+SI", "BX+DI", "BP+SI", "BP+DI",
+                               "SI", "DI", "DIRECT ADDRESS", "BX"};
+
+int source = 0, destination = 0;            // Holds the source and destination of the instruction
+int immediate = 0, displacement = 0;        // Holds immediate and displacement values
+byte mod = 0;                               // Holds mod value
+bool width = 0, dir = 0;
 
 void printInstructionBuffer(int len = INSTR_BUFF_MAX);
 
@@ -20,47 +40,8 @@ void loop()
 void serialEvent()
 {
   fetchInstruction();
-
-  if (validInstruction)
-  {
-    // TODO: Decode instruction
-  }
-  else
-  {
-    printMessage("Invalid instruction.");
-  }
-}
-
-// Summary: Fetches instruction from serial port and converts it into machine code
-// NOTE: Adjusts value of "validInstruction" boolean
-void fetchInstruction()
-{
-  printMessage("Fetching data...");
-
-  clearInstructionBuffer();
-  
-  // Get instruction
-  Serial.readBytesUntil('\n', (char *) instructionBuffer, INSTR_BUFF_MAX);
-
-  instructionLength = getInstructionLength();
-
-  // Check if instruction is valid (2 characters represent each byte)
-  if (instructionLength % 2 == 0)
-  {
-    // Adjust the length and validity
-    validInstruction = true;    
-    instructionLength /= 2;
-  }
-  else return;
-
-  convertToMachineCode(instructionLength);
-
-  printInstructionBuffer(instructionLength);
-}
-
-void decodeInstruction()
-{
-  // TODO: Decode the instruction here
+  // TODO: Implement decoding
+  decodeInstruction();
 }
 
 // Summary: Clears the instruction buffer
@@ -73,75 +54,13 @@ void clearInstructionBuffer()
   // Reset buffer length and valid instruction boolean
   instructionLength = 0;
   validInstruction = false;
-}
 
-// Summary: Converts the data in instruction buffer to machine code
-// NOTE: Adjusts value of "validInstruction" boolean
-void convertToMachineCode(int len)
-{
-  // Conversion from ASCII to machine code
-  for (int idx = 0; (idx < len) && validInstruction; idx++)
-  {
-    // Convert and set upper nibble
-    instructionBuffer[idx] = (getHexValue(instructionBuffer[idx * 2]) & 0x0F) << 4;
-    // Convert and set lower nibble
-    instructionBuffer[idx] |= getHexValue(instructionBuffer[idx * 2 + 1]) & 0x0F;
-  }
-
-  // Clearing the rest of the array
-  for (int idx = len; idx < INSTR_BUFF_MAX; idx++)
-  {
-    instructionBuffer[idx] = 0;
-  }
-}
-
-// Summary: Returns the amount of non-zero items in
-int getInstructionLength()
-{
-  int len = -1;
-
-  while (instructionBuffer[++len] != 0);
-
-  return len;
-}
-
-// Summary: Converts input ASCII to HEX
-// NOTE: Adjusts value of "validInstruction" boolean
-byte getHexValue(int ch)
-{
-  if (ch == 'a' || ch == 'A')
-  {
-    return (byte) 0x0A;
-  }
-  else if (ch == 'b' || ch == 'B')
-  {
-    return (byte) 0x0B;
-  }
-  else if (ch == 'c' || ch == 'C')
-  {
-    return (byte) 0x0C;
-  }
-  else if (ch == 'd' || ch == 'D')
-  {
-    return (byte) 0x0D;
-  }
-  else if (ch == 'e' || ch == 'E')
-  {
-    return (byte) 0x0E;
-  }
-  else if (ch == 'f' || ch == 'F')
-  {
-    return (byte) 0x0F;
-  }
-  else if (isDigit(ch))
-  {
-    return byte (ch - 48);
-  }
-  else
-  {
-    validInstruction = false;
-    return (byte) ch;
-  }
+  // Clear mod, displacement, immediate, source and destination
+  immediate = 0;
+  displacement = 0;
+  source = 0;
+  destination = 0;
+  mod = 0;
 }
 
 // Print functions
