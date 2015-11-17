@@ -19,10 +19,14 @@ const String registerNames[2][8] = {{"AL", "CL", "DL", "BL", "AH", "CH", "DH", "
 const String addressCalc[8] = {"BX+SI", "BX+DI", "BP+SI", "BP+DI",
                                "SI", "DI", "DIRECT ADDRESS", "BX"};
 
+// TODO: These are dummy values. Get actual names.
+// All segment register names. Index using SR or REG
+const String segRegNames[4] = {"CS", "DS", "ES", "SS"};
+
 int source = 0, destination = 0;            // Holds the source and destination of the instruction
 int immediate = 0, displacement = 0;        // Holds immediate and displacement values
 byte mod = 0;                               // Holds mod value
-bool width = 0, dir = 0;
+bool width = 0, dir = 0, dirAvailable = false, segAccess = false;
 
 void printInstructionBuffer(int len = INSTR_BUFF_MAX);
 
@@ -44,7 +48,7 @@ void serialEvent()
   decodeInstruction();
 }
 
-// Summary: Clears the instruction buffer
+// Summary: Clears the instruction buffer and resets all flags and values
 void clearInstructionBuffer()
 {
   // Clear the instruction array
@@ -55,12 +59,14 @@ void clearInstructionBuffer()
   instructionLength = 0;
   validInstruction = false;
 
-  // Clear mod, displacement, immediate, source and destination
+  // Clear all variables
   immediate = 0;
   displacement = 0;
   source = 0;
   destination = 0;
   mod = 0;
+  dirAvailable = false;
+  segAccess = false;
 }
 
 // Print functions
